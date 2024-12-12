@@ -2,7 +2,6 @@ import { HairCarousel } from "./ui/hairCar";
 import * as React from "react"
 import {
     Drawer,
-    DrawerClose,
     DrawerContent,
     DrawerDescription,
     DrawerFooter,
@@ -18,11 +17,9 @@ interface HairDrawerProps{
   export function HairDrawer(
     {imageSelector}:HairDrawerProps
   ) {
-    const [goal, setGoal] = React.useState(350)
+    
    
-    function onClick(adjustment: number) {
-      setGoal(Math.max(200, Math.min(400, goal + adjustment)))
-    }
+ 
    
     return (
       <Drawer>

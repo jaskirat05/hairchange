@@ -1,10 +1,6 @@
 import * as React from "react"
 import datahair from "../../constants/images.json"
-import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-} from "@/components/ui/avatar"
+
 
 import {
   Carousel,
@@ -13,7 +9,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
-import { ImageDown } from "lucide-react"
+
 import { Card, CardContent } from "./card"
 import { Checkbox } from "./checkbox"
 interface HairCarouselProps {
