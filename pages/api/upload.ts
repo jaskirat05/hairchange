@@ -18,13 +18,17 @@ cloudinary.v2.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
 export const config = {
   api: {
     bodyParser: {
       sizeLimit: '50mb',
     },
+    responseLimit: false,
+    maxDuration: 300, // Set maximum duration to 5 minutes
   },
-}
+};
+
 const convertToBase64 = async (file: File | string): Promise<string> => {
   // Check if the string has a MIME type and strip it off
   if (typeof file === 'string') {
@@ -112,21 +116,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { image1Path, image2Path, haircutType } = req.body;
 
     try {
+      // Set a longer timeout for the response
+      res.setTimeout(300000); // 5 minutes
+
+      // Start processing immediately
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Content-Type', 'application/json');
+
       // Await imageAdapter and return the result as a response.
       const uploadResponse = await imageAdapter(image1Path, image2Path, haircutType);
       console.log(uploadResponse);
 
-      // Return the response in the form of a resolved Promise.
-      return res.status(200).json({ success: true, "url":uploadResponse });
+      // Return the response
+      return res.status(200).json({ success: true, "url": uploadResponse });
     } catch (error) {
-      console.error(error);
-
-      // If there is an error, return a rejected Promise with status 500.
-      return res.status(500).json({ success: false, error: "Server is busy or starting up please wait"});
+      console.error('Error processing request:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: "Server is busy or starting up please wait",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   } else {
-    // Handle non-POST methods and return a rejected Promise with status 405.
     res.setHeader('Allow', ['POST']);
-    
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 }

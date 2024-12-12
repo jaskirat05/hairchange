@@ -29,40 +29,66 @@ export default function StartPage() {
       });
       return;
     }
+
     setLoading(true);
     setProgress(5);
-    const person = imageSrc;
-    const hairStyle = await convertToBase64(hairImageSrc!);
-    setProgress(10);
-    console.log(hairStyle);
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        image1Path: hairStyle,
-        image2Path: person,
-        haircutType: `${selectedHairstyleDesc}${haircutInput ? ', ' + haircutInput : ''}`
-      }),
-    });
-    setProgress(80);
-    const data = await response.json();
-    if (response.status === 500) {
-      setLoading(false);
-      toast({
-        title: "Server Busy",
-        description: "The Server is starting or busy at the moment. Please try again"
+    
+    try {
+      const person = imageSrc;
+      const hairStyle = await convertToBase64(hairImageSrc!);
+      setProgress(10);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image1Path: hairStyle,
+          image2Path: person,
+          haircutType: `${selectedHairstyleDesc}${haircutInput ? ', ' + haircutInput : ''}`
+        }),
       });
-    } else if (response.status === 200) {
+
+      clearTimeout(timeoutId);
+      setProgress(80);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process image');
+      }
+
+      const data = await response.json();
       setLoading(false);
       toast({
         title: "Success",
         description: "Your new hairstyle is ready"
       });
       setProgress(100);
-      console.log(data.url);
       router.push(`/stage?image=${data.url}`);
+    } catch (error) {
+      setLoading(false);
+      console.error('Error:', error);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          toast({
+            title: "Request Timeout",
+            description: "The request took too long. Please try again with a smaller image or try again later.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: error.message || "Failed to process image. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
     }
   };
 
