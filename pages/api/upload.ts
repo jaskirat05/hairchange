@@ -2,10 +2,21 @@ import workflowData from '../../constants/workflow.json';
 import cloudinary from 'cloudinary';
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+// Check for required environment variables
+if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 
+    !process.env.CLOUDINARY_API_KEY || 
+    !process.env.CLOUDINARY_API_SECRET) {
+  throw new Error('Missing required Cloudinary environment variables');
+}
+
+if (!process.env.RUNPOD_API_KEY) {
+  throw new Error('Missing required RunPod API key');
+}
+
 cloudinary.v2.config({
-  cloud_name: "dqgclphiu",
-  api_key: "612637443284944",
-  api_secret: "mgs3MP2VrGvTCGH4OWUGS6RAuOA",
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 export const config = {
   api: {
@@ -75,9 +86,9 @@ async function imageAdapter(image1Path:string, image2Path:string, haircutType: s
     
     method: 'POST',
     headers: {
-      'Authorization':"BVHXOB69FN7NIXL57IKXR1OSKLCIRFNJSGZBHA8D",
+      'Authorization': process.env.RUNPOD_API_KEY,
       'Content-Type': 'application/json',
-      'accept':"application/json"
+      'accept': 'application/json'
     },
     body: workflowStr,
   });
