@@ -35,7 +35,7 @@ export default function StartPage() {
     
     try {
       const person = imageSrc;
-      const hairStyle = await convertToBase64(hairImageSrc!);
+      //const hairStyle = await convertToBase64(hairImageSrc!);
       setProgress(10);
 
       const controller = new AbortController();
@@ -48,8 +48,7 @@ export default function StartPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          image1Path: hairStyle,
-          image2Path: person,
+          imagePath: person,
           haircutType: `${selectedHairstyleDesc}${haircutInput ? ', ' + haircutInput : ''}`
         }),
       });
@@ -69,7 +68,7 @@ export default function StartPage() {
         description: "Your new hairstyle is ready"
       });
       setProgress(100);
-      router.push(`/stage?image=${data.url}`);
+      router.push(`/stage?jobId=${data.jobId}`);
     } catch (error) {
       setLoading(false);
       console.error('Error:', error);
@@ -92,25 +91,7 @@ export default function StartPage() {
     }
   };
 
-  const convertToBase64 = (imageSrc: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.height = img.height;
-        canvas.width = img.width;
-        ctx?.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL("image/png");
-        resolve(dataUrl);
-      };
-      img.onerror = error => {
-        reject(error);
-      };
-      img.src = imageSrc;
-    });
-  };
+  
 
   const handleImageSelect = (imageSrc: string, description: string) => {
     setHairImage(imageSrc);

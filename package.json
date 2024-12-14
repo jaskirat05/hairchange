@@ -19,6 +19,7 @@
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
+    "@supabase/supabase-js": "^2.47.6",
     "@types/formidable": "^3.4.5",
     "class-variance-authority": "^0.7.0",
     "cloudinary": "^2.5.0",

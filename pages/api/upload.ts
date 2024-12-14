@@ -2,6 +2,9 @@ import workflowData from '../../constants/workflow.json';
 import cloudinary from 'cloudinary';
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { getAuth } from '@clerk/nextjs/server';
+import { supabaseAdmin } from '@/lib/supabase';
+
 // Check for required environment variables
 if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 
     !process.env.CLOUDINARY_API_KEY || 
@@ -58,88 +61,79 @@ const convertToBase64 = async (file: File | string): Promise<string> => {
   });
 };
 
-async function imageAdapter(image1Path:string, image2Path:string, haircutType: string) {
-  // Load the JSON file
+async function imageAdapter(imagePath: string, haircutType: string) {
   const jsonData = {...workflowData};
-
-  // Convert the image paths to base64 strings
-  const image1Base64 = await convertToBase64(image1Path);
+  const image2Base64 = await convertToBase64(imagePath);
   
-  const image2Base64 = await convertToBase64(image2Path);
-
-  // Modify the JSON with provided base64 image strings in the "images" section
-  jsonData.input.images[0].image = image2Base64; // Replace base64 string for image1 (image3.png)
-  jsonData.input.images[1].image = image1Base64; // Replace base64 string for image2 (image2.png)
+  jsonData.input.images[0].image = image2Base64;
   
-  // Update the text in node 12 with the user's input
   if (jsonData.input.workflow["12"] && jsonData.input.workflow["12"].inputs) {
-    jsonData.input.workflow["12"].inputs.text = haircutType;
+      jsonData.input.workflow["12"].inputs.text = haircutType;
   }
 
-  console.log("This is the image ", image1Base64);
-  console.log("This is the request", jsonData)
-  // Update the workflow with the new haircut type
   const workflowStr = JSON.stringify(jsonData);
-  //const updatedWorkflow = workflowStr.replace(/bantu knots/g, haircutType);
- // const updatedJsonData = JSON.parse(updatedWorkflow);
-
-  console.log("This is the iamge ", image1Base64);
-  console.log("This is the request", jsonData)  
-  // Send a POST request with the modified JSON
-  const response = await fetch('https://api.runpod.ai/v2/ymgc00mec97o48/runsync', {
-    
-    method: 'POST',
-    headers: {
-      'Authorization': process.env.RUNPOD_API_KEY,
-      'Content-Type': 'application/json',
-      'accept': 'application/json'
-    },
-    body: workflowStr,
+  
+  // Call RunPod
+  const response = await fetch('https://api.runpod.ai/v2/ymgc00mec97o48/run', {
+      method: 'POST',
+      headers: {
+          'Authorization': process.env.RUNPOD_API_KEY,
+          'Content-Type': 'application/json',
+          'accept': 'application/json'
+      },
+      body: workflowStr,
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to send data: ${response.statusText}`);
+      throw new Error(`Failed to send data: ${response.statusText}`);
   }
-  //console.log("hellooooooo-----------------",response.json)
-  const newImage=await response.json();
-  const mimeType="image/png";
-  const base64Image=newImage.output.message
-  const base64withMIME= `data:${mimeType};base64,${base64Image}`;
-  const uploadResponse = await cloudinary.v2.uploader.upload(base64withMIME).then(result=>{
-    return result.url;
-  });
-  return uploadResponse;
+  
+  const runpodResponse = await response.json();
+  console.log(runpodResponse);  
+  return {
+      runpodId: runpodResponse.id,
+      inputImage2: image2Base64
+  };
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
-  if (req.method === 'POST') {
-    const { image1Path, image2Path, haircutType } = req.body;
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+      const { userId } = await getAuth(req);
+      if (!userId) {
+          return res.status(401).json({ error: 'Unauthorized' });
+      }
 
-    try {
-      // Set a longer timeout for the response
-      res.setTimeout(300000); // 5 minutes
+      const { imagePath, haircutType } = req.body;
+      
+      // Upload input image to Cloudinary
+      const uploadResponse = await cloudinary.v2.uploader.upload(imagePath);
 
-      // Start processing immediately
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Content-Type', 'application/json');
+      // Call RunPod
+      const { runpodId } = await imageAdapter(imagePath, haircutType);
 
-      // Await imageAdapter and return the result as a response.
-      const uploadResponse = await imageAdapter(image1Path, image2Path, haircutType);
-      console.log(uploadResponse);
-
-      // Return the response
-      return res.status(200).json({ success: true, "url": uploadResponse });
-    } catch (error) {
-      console.error('Error processing request:', error);
-      return res.status(500).json({ 
-        success: false, 
-        error: "Server is busy or starting up please wait",
-        details: error instanceof Error ? error.message : 'Unknown error'
+      // Create job in Supabase - store URL directly without array
+      const { error: jobError } = await supabaseAdmin
+      .from('runpod_jobs')
+      .insert({
+          id: runpodId,
+          status: 'PENDING',
+          user_id: userId,
+          input_image_url: uploadResponse.secure_url 
       });
-    }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).json({ error: 'Method not allowed' });
+
+      if (jobError) {
+          console.error('Supabase error:', jobError);
+          throw new Error(`Failed to create job: ${jobError.message}`);
+      }
+
+      // Return the job ID to the client
+      res.status(200).json({ 
+          jobId: runpodId,
+          message: 'Job created successfully'
+      });
+
+  } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ error: 'Failed to process request' });
   }
 }
