@@ -20,17 +20,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log('Webhook received:', { id, status }); // Add logging
 
         if (status === 'COMPLETED' && output?.message) {
-            // Upload to Cloudinary
-            const mimeType = "image/png";
-            const base64withMIME = `data:${mimeType};base64,${output.message}`;
-            const uploadResponse = await cloudinary.v2.uploader.upload(base64withMIME);
+            //console.log('Output message:', output.message);
+           
 
             // Update job in Supabase
             const { error: updateError } = await supabaseAdmin
                 .from('runpod_jobs')
                 .update({ 
                     status: status,
-                    output_url: uploadResponse.url
+                    output_url: output.message
                 })
                 .eq('id', id);
 
