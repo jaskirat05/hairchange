@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import cloudinary from 'cloudinary';
+//import cloudinary from 'cloudinary';
 import { supabaseAdmin } from '../../lib/supabase';
 
 export const config = {
