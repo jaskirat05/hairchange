@@ -13,16 +13,17 @@ import {
 import { Button } from "./ui/button";
 interface HairDrawerProps{
   imageSelector:(image:string,description:string)=>void;
+  onOpenChange: (open: boolean) => void;
 }
   export function HairDrawer(
-    {imageSelector}:HairDrawerProps
+    {imageSelector, onOpenChange}:HairDrawerProps
   ) {
     
    
  
    
     return (
-      <Drawer>
+      <Drawer onOpenChange={onOpenChange}>
         <DrawerTrigger asChild>
           <Button variant="default">Choose a hairstyle</Button>
         </DrawerTrigger>

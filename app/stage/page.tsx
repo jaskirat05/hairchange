@@ -183,9 +183,12 @@ export default function Result() {
                   src={imageUrl} 
                   alt="Generated Hairstyle" 
                   className={cn(
-                    "absolute inset-0 w-full h-full object-cover transition-opacity duration-1000",
-                    showTransition ? "opacity-100" : "opacity-0"
+                    "absolute inset-0 w-full h-full object-cover transition-all duration-1000",
+                    showTransition 
+                      ? "opacity-100 scale-100" 
+                      : "opacity-0 scale-95"
                   )}
+                  style={{ transformOrigin: 'center' }}
                 />
               )}
 

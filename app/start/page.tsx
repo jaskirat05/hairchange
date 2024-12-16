@@ -17,6 +17,7 @@ export default function StartPage() {
   const [progress, setProgress] = useState(15);
   const [haircutInput, setHaircutInput] = useState<string>("");
   const [selectedHairstyleDesc, setSelectedHairstyleDesc] = useState<string>("");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -122,13 +123,61 @@ export default function StartPage() {
   return (
     <>
       {loading && (
-        <div className='absolute z-10 bg-black/80 top-0 left-0 w-full h-[110vh] flex items-center justify-center'>
-          <div className='flex flex-col items-center space-y-4'>
-            <Progress value={progress} className='w-60'/>
-            <p className='font-bold text-lg text-white'>{progress}%</p>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-lg">
+            <Progress value={progress} className="w-[60vw] md:w-[40vw] lg:w-[30vw]" />
           </div>
         </div>
       )}
+      <main className={`min-h-screen flex flex-col ${isDrawerOpen ? 'pointer-events-none' : ''}`}>
+        <div className='flex-1 max-h-[75vh] w-full flex justify-center p-3 md:p-5'>
+          <div className='bg-black w-full max-w-4xl aspect-square rounded-3xl relative pointer-events-none touch-none'>
+            {imageSrc ? (
+              <img 
+                src={imageSrc} 
+                alt="Uploaded" 
+                className="w-full h-full object-cover rounded-3xl pointer-events-none" 
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-gray-500">No image uploaded</p>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className='flex flex-col items-center mt-auto space-y-3 md:space-y-5 p-3 md:p-5'>
+          <div className="pointer-events-auto">
+            <HairDrawer imageSelector={handleImageSelect} onOpenChange={setIsDrawerOpen} />
+          </div>
+          <Separator className='w-[80%] md:w-[50%]'/>
+          <Input 
+            type="text" 
+            placeholder="Dark Afro Haircut" 
+            className='w-[90%] md:w-[80%] lg:w-[60%]' 
+            value={haircutInput}
+            onChange={(e) => setHaircutInput(e.target.value)}
+            disabled={isDrawerOpen}
+          />
+          <div className='flex flex-row justify-between w-full px-5 items-center'>
+            <div className={isDrawerOpen ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}>
+              <Link href="/" className="hover:opacity-80 transition-opacity">
+                <MoveLeft className="w-6 h-6 md:w-8 md:h-8"/>
+              </Link>
+            </div>
+            <div className={isDrawerOpen ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}>
+              <label htmlFor='file-upload' className="hover:opacity-80 transition-opacity">
+                <UploadButton/>
+              </label>
+            </div>
+            <div 
+              className={`hover:opacity-80 transition-opacity cursor-pointer ${isDrawerOpen ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}`}
+              onClick={generateImage}
+            >
+              <SquareArrowRightIcon className="w-6 h-6 md:w-8 md:h-8"/>
+            </div>
+          </div>
+        </div>
+      </main>
       <input
         id="file-upload"
         type="file"
@@ -136,35 +185,6 @@ export default function StartPage() {
         onChange={handleImageUpload}
         className="hidden"
       />
-      <div className='h-[70vh] rounded-xl w-screen flex justify-center p-5'>
-        <div className='bg-black w-[95vw] h-full rounded-3xl'>
-          {imageSrc ? (
-            <img src={imageSrc} alt="Uploaded" className="w-full h-full object-cover rounded-3xl" />
-          ) : (
-            <p className="text-gray-500">No image uploaded</p>
-          )}
-        </div>
-      </div>
-      <div className='flex flex-col items-center mt-5 space-y-5 h-[25vh]'>
-        <HairDrawer imageSelector={handleImageSelect} />
-        <Separator className='w-[50%]'/>
-        <Input 
-          type="text" 
-          placeholder="Dark Afro Haircut" 
-          className='w-[80%]' 
-          value={haircutInput}
-          onChange={(e) => setHaircutInput(e.target.value)}
-        />
-        <div className='flex flex-row justify-between w-full px-5 items-center h-full'>
-          <Link href="/"><MoveLeft/></Link>
-          <label htmlFor='file-upload'>
-            <UploadButton/>
-          </label>
-          <div onClick={generateImage}>
-            <SquareArrowRightIcon/>
-          </div>
-        </div>
-      </div>
     </>
   );
 }

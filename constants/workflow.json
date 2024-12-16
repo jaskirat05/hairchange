@@ -20,7 +20,7 @@
             0
           ],
           "image": [
-            "43",
+            "46",
             0
           ]
         },
@@ -34,7 +34,7 @@
       },
       "7": {
         "inputs": {
-          "seed": 169980249940006,
+          "seed": 489396198864877,
           "steps": 8,
           "cfg": 1,
           "sampler_name": "euler",
@@ -128,7 +128,7 @@
             0
           ],
           "pixels": [
-            "43",
+            "46",
             0
           ],
           "mask": [
@@ -208,20 +208,27 @@
         },
         "class_type": "LoraLoaderModelOnly"
       },
-      "43": {
+      "46": {
+        "inputs": {
+          "width": 1024,
+          "height": 1360,
+          "upscale_method": "nearest-exact",
+          "keep_proportion": true,
+          "divisible_by": 2,
+          "crop": "disabled",
+          "image": [
+            "47",
+            0
+          ]
+        },
+        "class_type": "ImageResizeKJ"
+      },
+      "47": {
         "inputs": {
           "image": "image3.png",
-          "resize": true,
-          "width": 1024,
-          "height": 1024,
-          "repeat": 1,
-          "keep_proportion": false,
-          "divisible_by": 2,
-          "mask_channel": "alpha",
-          "background_color": "",
           "upload": "image"
         },
-        "class_type": "LoadAndResizeImage"
+        "class_type": "LoadImage"
       }
     },
     "images": [
@@ -232,5 +239,5 @@
 
     ]
   },
- "webhook": "https://ae44-110-235-233-205.ngrok-free.app/api/webhook"
+ "webhook": "https://hairchange-9yaw.vercel.app/api/webhook"
 }
