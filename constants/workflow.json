@@ -10,7 +10,7 @@
       "2": {
         "inputs": {
           "prompt": "face",
-          "threshold": 0.5,
+          "threshold": 0.3,
           "sam_model": [
             "1",
             0
@@ -20,7 +20,7 @@
             0
           ],
           "image": [
-            "4",
+            "43",
             0
           ]
         },
@@ -32,16 +32,9 @@
         },
         "class_type": "GroundingDinoModelLoader (segment anything2)"
       },
-      "4": {
-        "inputs": {
-          "image": "image3.png",
-          "upload": "image"
-        },
-        "class_type": "LoadImage"
-      },
       "7": {
         "inputs": {
-          "seed": 275027461372809,
+          "seed": 169980249940006,
           "steps": 8,
           "cfg": 1,
           "sampler_name": "euler",
@@ -135,7 +128,7 @@
             0
           ],
           "pixels": [
-            "4",
+            "43",
             0
           ],
           "mask": [
@@ -214,6 +207,21 @@
           ]
         },
         "class_type": "LoraLoaderModelOnly"
+      },
+      "43": {
+        "inputs": {
+          "image": "image3.png",
+          "resize": true,
+          "width": 1024,
+          "height": 1024,
+          "repeat": 1,
+          "keep_proportion": false,
+          "divisible_by": 2,
+          "mask_channel": "alpha",
+          "background_color": "",
+          "upload": "image"
+        },
+        "class_type": "LoadAndResizeImage"
       }
     },
     "images": [
@@ -224,5 +232,5 @@
 
     ]
   },
- "webhook": "https://hairchange-9yaw.vercel.app/api/webhook"
+ "webhook": "https://ae44-110-235-233-205.ngrok-free.app/api/webhook"
 }
