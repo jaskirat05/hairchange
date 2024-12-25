@@ -15,58 +15,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Heart } from "@/components/icons/Heart";
+import { Heart } from "@/components/icons/heart";
 import { useAuth } from "@clerk/nextjs";
-
-const trendingHairstyles = [
-  {
-    id: 1,
-    name: "Modern Pixie",
-    imageUrl: "/trending/pixie.jpg"
-  },
-  {
-    id: 2,
-    name: "Beach Waves",
-    imageUrl: "/trending/waves.jpg"
-  },
-  {
-    id: 3,
-    name: "Sleek Bob",
-    imageUrl: "/trending/bob.jpg"
-  },
-  {
-    id: 4,
-    name: "Layered Long",
-    imageUrl: "/trending/layered.jpg"
-  }
-];
-
-const communityTransformations = [
-  {
-    id: 1,
-    beforeUrl: "/community/before1.jpg",
-    afterUrl: "/community/after1.jpg",
-    userName: "Sarah M.",
-    likes: 234,
-    style: "Wavy Bob"
-  },
-  {
-    id: 2,
-    beforeUrl: "/community/before2.jpg",
-    afterUrl: "/community/after2.jpg",
-    userName: "Emily K.",
-    likes: 189,
-    style: "Long Layers"
-  },
-  {
-    id: 3,
-    beforeUrl: "/community/before3.jpg",
-    afterUrl: "/community/after3.jpg",
-    userName: "Jessica R.",
-    likes: 156,
-    style: "Pixie Cut"
-  }
-];
 
 export default function Result() {
   const searchParams = useSearchParams();
@@ -79,7 +29,8 @@ export default function Result() {
   const [showTransition, setShowTransition] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
-  const [communityPosts, setCommunityPosts] = useState<any[]>([]);
+  const [trendingPosts, setTrendingPosts] = useState<any[]>([]);
+  const [recentPosts, setRecentPosts] = useState<any[]>([]);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -218,7 +169,8 @@ export default function Result() {
   useEffect(() => {
     const fetchCommunityPosts = async () => {
       try {
-        const { data: posts, error } = await supabase
+        // Fetch trending posts (by likes)
+        const { data: trendingData, error: trendingError } = await supabase
           .from('community_posts')
           .select(`
             id,
@@ -231,13 +183,32 @@ export default function Result() {
             community_likes (user_id)
           `)
           .order('likes_count', { ascending: false })
+          .limit(4);
+
+        if (trendingError) throw trendingError;
+
+        // Fetch recent posts
+        const { data: recentData, error: recentError } = await supabase
+          .from('community_posts')
+          .select(`
+            id,
+            input_image_url,
+            output_image_url,
+            hairstyle_settings,
+            likes_count,
+            posted_at,
+            user_id,
+            community_likes (user_id)
+          `)
+          .order('posted_at', { ascending: false })
           .limit(10);
 
-        if (error) throw error;
+        if (recentError) throw recentError;
 
         // Get the current user's liked posts
+        const allPosts = [...(trendingData || []), ...(recentData || [])];
         const userLikes = new Set(
-          posts
+          allPosts
             ?.filter(post => 
               post.community_likes?.some((like: any) => like.user_id === userId)
             )
@@ -245,7 +216,8 @@ export default function Result() {
         );
         
         setLikedPosts(userLikes);
-        setCommunityPosts(posts || []);
+        setTrendingPosts(trendingData || []);
+        setRecentPosts(recentData || []);
       } catch (err) {
         console.error('Error fetching community posts:', err);
       }
@@ -271,7 +243,15 @@ export default function Result() {
       const updatedPost = await response.json();
       
       // Update local state
-      setCommunityPosts(prev => 
+      setTrendingPosts(prev => 
+        prev.map(post => 
+          post.id === postId 
+            ? { ...post, likes_count: updatedPost.likes_count }
+            : post
+        )
+      );
+
+      setRecentPosts(prev => 
         prev.map(post => 
           post.id === postId 
             ? { ...post, likes_count: updatedPost.likes_count }
@@ -437,42 +417,80 @@ export default function Result() {
         </Button>
       </div>
 
-      {/* Trending Hairstyles Section */}
-      <div className="mt-16 px-5">
-        <h2 className="text-2xl font-bold text-center mb-8">Try Trending Hairstyles</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {trendingHairstyles.map((style) => (
-            <div key={style.id} className="relative group">
-              <div className="aspect-square rounded-xl overflow-hidden bg-gray-200">
-                <img
-                  src={style.imageUrl}
-                  alt={style.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-xl">
-                <Button 
-                  variant="default"
-                  size="sm"
-                  asChild
-                  className="bg-white text-black hover:bg-white/90"
-                >
-                  <Link href={`/start?style=${style.id}`}>Try This Style</Link>
-                </Button>
-              </div>
-              <p className="mt-2 text-center font-medium">{style.name}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Trending Community Posts */}
+      {/* Trending Transformations */}
       <section className="mt-16 w-full">
-        <h2 className="text-2xl font-bold mb-6">Trending Transformations</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
-          {communityPosts.map((post) => (
+        <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-purple-50 rounded-2xl p-8 shadow-lg border border-purple-100/50">
+          <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Trending Transformations
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl mx-auto">
+            {trendingPosts.map((post) => (
+              <div key={post.id} className="bg-white/80 backdrop-blur-sm rounded-lg shadow-md overflow-hidden w-full transform transition-transform hover:scale-[1.02]">
+                <div className="relative aspect-square w-full">
+                  <div className="absolute inset-0 flex">
+                    {/* Before Image */}
+                    <div className="w-1/2 relative overflow-hidden">
+                      <img
+                        src={post.input_image_url}
+                        alt="Before"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    </div>
+                    {/* After Image */}
+                    <div className="w-1/2 relative overflow-hidden">
+                      <img
+                        src={post.output_image_url}
+                        alt="After"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    </div>
+                    {/* Center Line */}
+                    <div className="absolute inset-y-0 left-1/2 w-0.5 bg-white transform -translate-x-1/2 z-10" />
+                  </div>
+                </div>
+                <div className="p-4 bg-gradient-to-b from-white/80 to-purple-50/80">
+                  <div className="flex justify-between items-center gap-4">
+                    <Button
+                      onClick={() => tryTransformation(post.hairstyle_settings)}
+                      className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!originalImageUrl || status !== "COMPLETED"}
+                    >
+                      {!originalImageUrl 
+                        ? "Upload an image first" 
+                        : status !== "COMPLETED"
+                        ? "Wait for current transformation"
+                        : "Try this transformation"}
+                    </Button>
+                    <button
+                      onClick={() => handleLike(post.id)}
+                      className={`flex items-center space-x-1 ${
+                        likedPosts.has(post.id) 
+                          ? 'text-red-500' 
+                          : 'text-gray-500 hover:text-red-500'
+                      } transition-colors`}
+                    >
+                      <Heart
+                        className={`w-6 h-6 ${
+                          likedPosts.has(post.id) ? 'fill-current' : ''
+                        }`}
+                      />
+                      <span className="font-medium">{post.likes_count || 0}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Recent Transformations */}
+      <section className="mt-16 w-full">
+        <h2 className="text-2xl font-bold mb-6">Recent Transformations</h2>
+        <div className="space-y-6 w-full max-w-4xl mx-auto">
+          {recentPosts.map((post) => (
             <div key={post.id} className="bg-black/10 rounded-lg shadow-md overflow-hidden w-full">
-              <div className="relative aspect-square w-full">
+              <div className="relative aspect-[2/1] w-full">
                 <div className="absolute inset-0 flex">
                   {/* Before Image */}
                   <div className="w-1/2 relative overflow-hidden">
@@ -494,29 +512,33 @@ export default function Result() {
                   <div className="absolute inset-y-0 left-1/2 w-0.5 bg-white transform -translate-x-1/2 z-10" />
                 </div>
               </div>
-              <div className="p-4">
+              <div className="p-6">
                 <div className="flex justify-between items-center gap-4">
                   <Button
                     onClick={() => tryTransformation(post.hairstyle_settings)}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                    disabled={!originalImageUrl}
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!originalImageUrl || status !== "COMPLETED"}
                   >
-                    {!originalImageUrl ? "Upload an image first" : "Try this transformation"}
+                    {!originalImageUrl 
+                      ? "Upload an image first" 
+                      : status !== "COMPLETED"
+                      ? "Wait for current transformation"
+                      : "Try this transformation"}
                   </Button>
                   <button
                     onClick={() => handleLike(post.id)}
-                    className={`flex items-center space-x-1 ${
+                    className={`flex items-center space-x-2 ${
                       likedPosts.has(post.id) 
                         ? 'text-red-500' 
                         : 'text-gray-500 hover:text-red-500'
                     } transition-colors`}
                   >
                     <Heart
-                      className={`w-5 h-5 ${
+                      className={`w-6 h-6 ${
                         likedPosts.has(post.id) ? 'fill-current' : ''
                       }`}
                     />
-                    <span>{post.likes_count || 0}</span>
+                    <span className="text-lg font-medium">{post.likes_count || 0}</span>
                   </button>
                 </div>
               </div>
@@ -524,60 +546,6 @@ export default function Result() {
           ))}
         </div>
       </section>
-
-      {/* Community Transformations Section */}
-      <div className="mt-20 px-5 pb-20 bg-white py-16">
-        <h2 className="text-2xl font-bold text-center mb-2">By the Community</h2>
-        <p className="text-center text-gray-600 mb-12">Real transformations from our users</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-          {communityTransformations.map((transform) => (
-            <div key={transform.id} className="bg-gray-50 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex h-48 md:h-64">
-                <div className="w-1/2 relative">
-                  <img
-                    src={transform.beforeUrl}
-                    alt="Before"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                    Before
-                  </div>
-                </div>
-                <div className="w-1/2 relative">
-                  <img
-                    src={transform.afterUrl}
-                    alt="After"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                    After
-                  </div>
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium">{transform.userName}</span>
-                  <div className="flex items-center text-gray-600 text-sm">
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                    </svg>
-                    {transform.likes}
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600">{transform.style}</p>
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-3"
-                  asChild
-                >
-                  <Link href={`/start?style=${transform.style}`}>Try This Look</Link>
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
