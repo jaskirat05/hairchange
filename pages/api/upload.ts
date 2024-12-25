@@ -63,6 +63,7 @@ const convertToBase64 = async (file: File | string): Promise<string> => {
 
 async function imageAdapter(imagePath: string, haircutType: string) {
   const jsonData = {...workflowData};
+  jsonData.webhook="https://c222-110-235-233-132.ngrok-free.app/api/webhook"; 
   const image2Base64 = await convertToBase64(imagePath);
   
   jsonData.input.images[0].image = image2Base64;
@@ -109,26 +110,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const uploadResponse = await cloudinary.v2.uploader.upload(imagePath);
 
       // Call RunPod
-      const { runpodId } = await imageAdapter(imagePath, haircutType);
+      const result = await imageAdapter(imagePath, haircutType);
 
-      // Create job in Supabase - store URL directly without array
-      const { error: jobError } = await supabaseAdmin
-      .from('runpod_jobs')
-      .insert({
-          id: runpodId,
-          status: 'PENDING',
-          user_id: userId,
-          input_image_url: uploadResponse.secure_url 
-      });
+      // Create job in Supabase
+      const { data, error } = await supabaseAdmin
+        .from('runpod_jobs')
+        .insert([
+          {
+            id: result.runpodId,
+            status: 'PENDING',
+            input_image_url: uploadResponse.secure_url,
+            user_id: userId,
+            settings: {
+              hairstyle_type: haircutType,
+              workflow: workflowData.input.workflow,
+              created_at: new Date().toISOString()
+            }
+          }
+        ]);
 
-      if (jobError) {
-          console.error('Supabase error:', jobError);
-          throw new Error(`Failed to create job: ${jobError.message}`);
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Failed to create job: ${error.message}`);
       }
 
       // Return the job ID to the client
       res.status(200).json({ 
-          jobId: runpodId,
+          jobId: result.runpodId,
           message: 'Job created successfully'
       });
 

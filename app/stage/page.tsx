@@ -5,7 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { supabase } from "@/lib/supabase-client";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const trendingHairstyles = [
@@ -65,6 +73,8 @@ export default function Result() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("PENDING");
   const [showTransition, setShowTransition] = useState(false);
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
     const jobId = searchParams!.get('jobId');
@@ -116,22 +126,54 @@ export default function Result() {
   }, [searchParams, status, originalImageUrl]);
 
   const downloadImage = async () => {
-    if (!imageUrl) return;
+    if (!imageUrl) {
+      console.error('No image URL available');
+      return;
+    }
 
     try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Create a download link
       const link = document.createElement('a');
-      link.href = url;
+      link.href = `/api/download?url=${encodeURIComponent(imageUrl)}`;
       link.download = 'hairstyle.png';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to download image:', err);
       setError("Failed to download image");
+    }
+  };
+
+  const handlePostToCommunity = async () => {
+    const jobId = searchParams!.get('jobId');
+    if (!jobId) {
+      setError("No job ID available");
+      return;
+    }
+
+    setIsPosting(true);
+    try {
+      const response = await fetch('/api/community/post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to post to community');
+      }
+
+      // Close the modal and show success message
+      setShowPostModal(false);
+      // You might want to add a toast or notification here
+    } catch (err) {
+      console.error('Failed to post to community:', err);
+      setError("Failed to post to community");
+    } finally {
+      setIsPosting(false);
     }
   };
 
@@ -217,6 +259,57 @@ export default function Result() {
         >
           Download Image
         </Button>
+        
+        <Dialog open={showPostModal} onOpenChange={setShowPostModal}>
+          <DialogTrigger asChild>
+            <Button 
+              variant="default" 
+              size="lg" 
+              className='px-7 bg-gradient-to-tl from-blue-500 to-blue-200 to-95%'
+              disabled={!imageUrl}
+            >
+              Post to Community
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-white border-border">
+            <DialogHeader className="border-b border-border pb-4">
+              <DialogTitle className="text-foreground">Share with the Community</DialogTitle>
+              <DialogDescription className="pt-4 space-y-4 text-muted-foreground">
+                <p>
+                  By sharing your transformation, your image will be publicly visible in our community section.
+                </p>
+                <p className="font-medium text-primary">
+                  🏆 Weekly Contest: Get a chance to win $50 if your transformation receives the most likes this week!
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowPostModal(false)}
+                className="border-border text-foreground hover:bg-accent"
+                disabled={isPosting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePostToCommunity}
+                className="bg-primary text-primary-foreground hover:opacity-90"
+                disabled={isPosting}
+              >
+                {isPosting ? (
+                  <>
+                    <span className="animate-spin mr-2">⭮</span>
+                    Sharing...
+                  </>
+                ) : (
+                  'Share My Transformation'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Button 
           variant="outline" 
           size="lg" 
