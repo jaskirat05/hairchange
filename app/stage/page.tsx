@@ -486,7 +486,7 @@ export default function Result() {
 
       {/* Recent Transformations */}
       <section className="mt-16 w-full">
-        <h2 className="text-2xl font-bold mb-6">Recent Transformations</h2>
+        <h2 className="text-2xl font-bold mb-6 text-black">Recent Transformations</h2>
         <div className="space-y-6 w-full max-w-4xl mx-auto">
           {recentPosts.map((post) => (
             <div key={post.id} className="bg-black/10 rounded-lg shadow-md overflow-hidden w-full">

@@ -15,7 +15,7 @@ async function imageUrlToBase64(url: string): Promise<string> {
 
 async function imageAdapter(imageUrl: string, haircutType: string) {
   const jsonData = {...workflowData};
-  jsonData.webhook = "https://c222-110-235-233-132.ngrok-free.app/api/webhook";
+  jsonData.webhook = `${process.env.WEBHOOK_URL}/api/webhook`
   
   // Convert image URL to base64
   const image2Base64 = await imageUrlToBase64(imageUrl);

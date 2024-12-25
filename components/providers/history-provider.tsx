@@ -9,7 +9,7 @@ export function HistoryProvider({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const showHistory = !pathname!.includes("/sign-in") && !pathname!.includes("/sign-up");
+  const showHistory = pathname?.includes("stage");
 
   return (
     <>
