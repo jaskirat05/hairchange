@@ -1,5 +1,5 @@
 "use client"
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +15,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Heart } from "@/components/icons/Heart";
+import { useAuth } from "@clerk/nextjs";
 
 const trendingHairstyles = [
   {
@@ -68,6 +70,8 @@ const communityTransformations = [
 
 export default function Result() {
   const searchParams = useSearchParams();
+  const { userId } = useAuth();
+  const router = useRouter();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +79,8 @@ export default function Result() {
   const [showTransition, setShowTransition] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  const [communityPosts, setCommunityPosts] = useState<any[]>([]);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const jobId = searchParams!.get('jobId');
@@ -174,6 +180,117 @@ export default function Result() {
       setError("Failed to post to community");
     } finally {
       setIsPosting(false);
+    }
+  };
+
+  const tryTransformation = async (settings: any) => {
+    try {
+      if (!originalImageUrl) {
+        setError("Please upload an image first");
+        return;
+      }
+
+      const response = await fetch('/api/transform', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageUrl: originalImageUrl,
+          haircutType: settings.hairstyle_type,
+          workflow: settings.workflow
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start transformation');
+      }
+
+      const data = await response.json();
+      router.push(`/stage?jobId=${data.jobId}`);
+    } catch (err) {
+      console.error('Error starting transformation:', err);
+      setError("Failed to start transformation");
+    }
+  };
+
+  // Fetch community posts
+  useEffect(() => {
+    const fetchCommunityPosts = async () => {
+      try {
+        const { data: posts, error } = await supabase
+          .from('community_posts')
+          .select(`
+            id,
+            input_image_url,
+            output_image_url,
+            hairstyle_settings,
+            likes_count,
+            posted_at,
+            user_id,
+            community_likes (user_id)
+          `)
+          .order('likes_count', { ascending: false })
+          .limit(10);
+
+        if (error) throw error;
+
+        // Get the current user's liked posts
+        const userLikes = new Set(
+          posts
+            ?.filter(post => 
+              post.community_likes?.some((like: any) => like.user_id === userId)
+            )
+            .map(post => post.id)
+        );
+        
+        setLikedPosts(userLikes);
+        setCommunityPosts(posts || []);
+      } catch (err) {
+        console.error('Error fetching community posts:', err);
+      }
+    };
+
+    if (userId) {
+      fetchCommunityPosts();
+    }
+  }, [userId]);
+
+  const handleLike = async (postId: string) => {
+    try {
+      const response = await fetch('/api/community/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId }),
+      });
+
+      if (!response.ok) throw new Error('Failed to like post');
+
+      const updatedPost = await response.json();
+      
+      // Update local state
+      setCommunityPosts(prev => 
+        prev.map(post => 
+          post.id === postId 
+            ? { ...post, likes_count: updatedPost.likes_count }
+            : post
+        )
+      );
+
+      // Toggle like in local state
+      setLikedPosts(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(postId)) {
+          newSet.delete(postId);
+        } else {
+          newSet.add(postId);
+        }
+        return newSet;
+      });
+    } catch (err) {
+      console.error('Error liking post:', err);
     }
   };
 
@@ -348,6 +465,65 @@ export default function Result() {
           ))}
         </div>
       </div>
+
+      {/* Trending Community Posts */}
+      <section className="mt-16 w-full">
+        <h2 className="text-2xl font-bold mb-6">Trending Transformations</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
+          {communityPosts.map((post) => (
+            <div key={post.id} className="bg-black/10 rounded-lg shadow-md overflow-hidden w-full">
+              <div className="relative aspect-square w-full">
+                <div className="absolute inset-0 flex">
+                  {/* Before Image */}
+                  <div className="w-1/2 relative overflow-hidden">
+                    <img
+                      src={post.input_image_url}
+                      alt="Before"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* After Image */}
+                  <div className="w-1/2 relative overflow-hidden">
+                    <img
+                      src={post.output_image_url}
+                      alt="After"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* Center Line */}
+                  <div className="absolute inset-y-0 left-1/2 w-0.5 bg-white transform -translate-x-1/2 z-10" />
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="flex justify-between items-center gap-4">
+                  <Button
+                    onClick={() => tryTransformation(post.hairstyle_settings)}
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                    disabled={!originalImageUrl}
+                  >
+                    {!originalImageUrl ? "Upload an image first" : "Try this transformation"}
+                  </Button>
+                  <button
+                    onClick={() => handleLike(post.id)}
+                    className={`flex items-center space-x-1 ${
+                      likedPosts.has(post.id) 
+                        ? 'text-red-500' 
+                        : 'text-gray-500 hover:text-red-500'
+                    } transition-colors`}
+                  >
+                    <Heart
+                      className={`w-5 h-5 ${
+                        likedPosts.has(post.id) ? 'fill-current' : ''
+                      }`}
+                    />
+                    <span>{post.likes_count || 0}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Community Transformations Section */}
       <div className="mt-20 px-5 pb-20 bg-white py-16">
