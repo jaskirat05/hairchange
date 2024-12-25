@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { HistoryProvider } from "@/components/providers/history-provider";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 
@@ -14,8 +15,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      <html lang="en">
+    <html lang="en">
+      <ClerkProvider>
         <body>
           <ThemeProvider
             attribute="class"
@@ -23,10 +24,12 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <HistoryProvider>
+              {children}
+            </HistoryProvider>
           </ThemeProvider>
         </body>
-      </html>
-    </ClerkProvider>
+      </ClerkProvider>
+    </html>
   );
 }

@@ -63,7 +63,7 @@ const convertToBase64 = async (file: File | string): Promise<string> => {
 
 async function imageAdapter(imagePath: string, haircutType: string) {
   const jsonData = {...workflowData};
-  jsonData.webhook="https://c222-110-235-233-132.ngrok-free.app/api/webhook"; 
+  jsonData.webhook= `${process.env.WEBHOOK_URL}/api/webhook` || "https://c222-110-235-233-132.ngrok-free.app/api/webhook"; 
   const image2Base64 = await convertToBase64(imagePath);
   
   jsonData.input.images[0].image = image2Base64;

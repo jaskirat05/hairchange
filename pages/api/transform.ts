@@ -80,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
       ]);
-
+    
     if (error) {
       console.error('Supabase error:', error);
       throw new Error(`Failed to create job: ${error.message}`);
